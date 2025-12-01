@@ -1,0 +1,14 @@
+@import "tailwindcss";    
+
+@theme {
+  /* 1. Define the Monospaced Font */
+  --font-mono: "JetBrains Mono", "Roboto Mono", monospace;
+
+  /* 2. Define Custom Colors */
+  --color-monke-bg: #323437;       /* Dark background */
+  --color-monke-main: #e2b714;     /* Yellow active/cursor */
+  --color-monke-caret: #e2b714;
+  --color-monke-text: #646669;     /* Dim gray (untyped) */
+  --color-monke-light: #d1d0c5;    /* Bright (correct text) */
+  --color-monke-error: #ca4754;    /* Red error */
+}
