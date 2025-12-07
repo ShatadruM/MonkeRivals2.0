@@ -1,11 +1,15 @@
+import Match from '../models/Match.js';
+import User from '../models/User.js';
+
 // Map to store temporary results: { roomId: [ { userId, wpm, time } ] }
 const roomResults = new Map();
 
 const handleGameEvents = (io, socket) => {
     
     // 1. Progress Update
-    // Broadcasts live WPM/Progress to the opponent so their bar moves
     socket.on('update_progress', (data) => {
+      // (Optional) Uncomment to debug progress stream
+      // console.log(`[DEBUG] Progress: ${socket.id} - ${data.percentage}%`);
       socket.to(data.roomId).emit('opponent_progress', {
         userId: socket.id,
         percentage: data.percentage,
@@ -13,58 +17,119 @@ const handleGameEvents = (io, socket) => {
       });
     });
   
-    // 2. Game Finished (Wait for both players logic)
-    socket.on('game_finished', (data) => {
-      const { roomId, wpm } = data;
+    // 2. Game Finished
+    socket.on('game_finished', async (data) => {
+      console.log(`[DEBUG] RECEIVED game_finished from ${socket.id}`);
+      console.log(`[DEBUG] Payload:`, data);
+
+      const { roomId, wpm, accuracy, mongoUserId } = data; 
       const finishTime = Date.now();
 
-      // Initialize room array if it doesn't exist yet
       if (!roomResults.has(roomId)) {
         roomResults.set(roomId, []);
       }
 
       const results = roomResults.get(roomId);
       
-      // Safety: Prevent duplicate submissions from the same user
-      if (results.some(r => r.userId === socket.id)) return;
+      // Prevent duplicate submissions
+      if (results.some(r => r.socketId === socket.id)) {
+          console.log(`[DEBUG] Duplicate submission blocked for ${socket.id}`);
+          return;
+      }
 
-      // Add this player's result to the list
+      // Add this player's result
       results.push({
-        userId: socket.id,
-        wpm: wpm,
+        socketId: socket.id,
+        mongoUserId: mongoUserId || null,
+        wpm,
+        accuracy: accuracy || 0,
         time: finishTime
       });
 
-      // CHECK: Have both players finished? (Assuming 2-player limit)
+      console.log(`[DEBUG] Room ${roomId} results count: ${results.length}/2`);
+
+      // CHECK: Have both players finished?
       if (results.length === 2) {
-        // --- BOTH FINISHED ---
+        console.log(`[DEBUG] Both players finished. Calculating winner...`);
         
-        // Sort by WPM (descending). If WPM is tied, the faster time wins.
+        // Sort by WPM (descending). Tie-breaker: Time (ascending)
         results.sort((a, b) => {
             if (b.wpm !== a.wpm) return b.wpm - a.wpm;
             return a.time - b.time; 
         });
 
+        // Assign Ranks
+        results.forEach((r, index) => r.rank = index + 1);
+
         const winner = results[0];
 
-        console.log(`Match ${roomId} Complete. Winner: ${winner.userId}`);
+        // --- SAVE TO DATABASE ---
+        try {
+            const hasLoggedInUser = results.some(r => r.mongoUserId);
+            console.log(`[DEBUG] Has logged in user? ${hasLoggedInUser}`);
 
-        // Broadcast final results to everyone in the room
+            if (hasLoggedInUser) {
+                
+                // 1. Create Match Record
+                const matchRecord = new Match({
+                    roomId,
+                    participants: results.map(r => ({
+                        user: r.mongoUserId, 
+                        socketId: r.socketId,
+                        wpm: r.wpm,
+                        accuracy: r.accuracy,
+                        rank: r.rank
+                    })),
+                    winner: winner.mongoUserId
+                });
+                
+                console.log(`[DEBUG] Saving Match to MongoDB...`);
+                await matchRecord.save();
+                console.log(`[DEBUG] Match saved! ID: ${matchRecord._id}`);
+
+                // 2. Update User Stats & MMR
+                for (const r of results) {
+                    if (r.mongoUserId) {
+                        const user = await User.findById(r.mongoUserId);
+                        if (user) {
+                            user.stats.matchesPlayed += 1;
+                            if (r.rank === 1) user.stats.wins += 1;
+                            
+                            const currentTotal = user.stats.matchesPlayed;
+                            const oldTotalWpm = user.stats.avgWpm * (currentTotal - 1);
+                            user.stats.avgWpm = Math.round((oldTotalWpm + r.wpm) / currentTotal);
+                            
+                            if (r.wpm > user.stats.bestWpm) user.stats.bestWpm = r.wpm;
+
+                            const mmrChange = r.rank === 1 ? 30 : -20;
+                            user.stats.mmr += mmrChange;
+                            if (user.stats.mmr < 0) user.stats.mmr = 0;
+
+                            await user.save();
+                            console.log(`[DEBUG] Updated stats for ${user.username}: MMR ${user.stats.mmr}`);
+                        } else {
+                            console.log(`[DEBUG] User not found in DB: ${r.mongoUserId}`);
+                        }
+                    }
+                }
+            } else {
+                console.log(`[DEBUG] Skipping DB save (No logged-in users)`);
+            }
+        } catch (err) {
+            console.error("[DEBUG] Error saving match data:", err);
+        }
+
+        // Broadcast Results
         io.to(roomId).emit('game_over', {
           results: results, 
-          winnerId: winner.userId
+          winnerId: winner.socketId
         });
 
-        // Cleanup memory
         roomResults.delete(roomId);
 
       } else {
-        // --- ONLY THIS PLAYER FINISHED ---
-        
-        // 1. Tell THIS player to wait
+        console.log(`[DEBUG] Waiting for opponent in room ${roomId}`);
         socket.emit('waiting_for_opponent');
-        
-        // 2. Notify the opponent that this player has finished (adds pressure)
         socket.to(roomId).emit('opponent_finished', { wpm });
       }
     });

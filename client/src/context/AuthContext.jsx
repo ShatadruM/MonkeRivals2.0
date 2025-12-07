@@ -26,7 +26,7 @@ export const AuthProvider = ({ children }) => {
     return signOut(auth);
   };
 
-  // --- NEW: Sync Logic ---
+  // --- Sync Logic ---
   const syncWithBackend = async (firebaseUser) => {
     if (!firebaseUser) return;
 
@@ -56,12 +56,14 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    // FIX: Make this callback async so we can wait for MongoDB data
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       
       if (user) {
-        // If logged in, fetch game stats immediately
-        syncWithBackend(user);
+        // If logged in, WAIT for the backend sync to finish
+        // This ensures mongoUser is populated BEFORE loading becomes false
+        await syncWithBackend(user);
       } else {
         setMongoUser(null);
       }
@@ -74,7 +76,7 @@ export const AuthProvider = ({ children }) => {
 
   const value = {
     currentUser,
-    mongoUser, // Now available to the rest of the app!
+    mongoUser, // Now guaranteed to be set if logged in (before children render)
     loginWithGoogle,
     logout
   };

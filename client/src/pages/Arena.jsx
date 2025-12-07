@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSocket } from '../context/SocketContext';
+import { useAuth } from '../context/AuthContext';
 import Button from '../components/UI/Button';
 import TypingBoard from '../components/Game/TypingBoard';
 import ResultsView from '../components/Game/ResultsView';
@@ -7,6 +8,7 @@ import { Swords, Loader2, Clock } from 'lucide-react';
 
 const Arena = () => {
   const socket = useSocket();
+   const { mongoUser } = useAuth(); 
   const [matchState, setMatchState] = useState('idle'); 
   const [gameText, setGameText] = useState("");
   const [opponentInfo, setOpponentInfo] = useState(null);
@@ -116,29 +118,31 @@ const Arena = () => {
     }
   };
 
-  const handleTick = useCallback((currentWpm, progressPercentage, currentAccuracy) => {
+   const handleTick = useCallback((currentWpm, progressPercentage, currentAccuracy) => {
     if (matchState === 'playing' && !hasFinishedRef.current) {
-        
-        // --- CRITICAL FIX: Update Ref IMMEDIATELY here ---
-        // We do this before setting state or emitting events so the Ref is 
-        // guaranteed to be fresh when 'game_over' fires, bypassing React render lag.
-        statsRef.current = { 
-            myWpm: currentWpm, 
-            oppWpm: statsRef.current.oppWpm, 
-            accuracy: currentAccuracy 
-        };
-
-        setMyStats({ wpm: currentWpm, progress: progressPercentage, accuracy: currentAccuracy});
+        setMyStats({ wpm: currentWpm, progress: progressPercentage, accuracy: currentAccuracy });
         
         socket?.emit('update_progress', { roomId, percentage: progressPercentage, wpm: currentWpm });
 
         if (progressPercentage === 100) {
-            hasFinishedRef.current = true; 
-            socket?.emit('game_finished', { roomId, wpm: currentWpm, accuracy: currentAccuracy });
+            hasFinishedRef.current = true;
+            
+            // --- DEBUG LOG ---
+            console.log("SENDING FINISH:", {
+                wpm: currentWpm,
+                acc: currentAccuracy,
+                userId: mongoUser?._id // Check your Browser Console for this value!
+            });
+
+            socket?.emit('game_finished', { 
+                roomId, 
+                wpm: currentWpm, 
+                accuracy: currentAccuracy, 
+                mongoUserId: mongoUser?._id 
+            });
         }
     }
-  }, [matchState, roomId, socket]);
-
+  }, [matchState, roomId, socket, mongoUser]); // Ensure mongoUser is in dependencies
   const handleFindMatch = () => {
     if (socket && !socket.connected) socket.connect();
     setMatchState('searching');

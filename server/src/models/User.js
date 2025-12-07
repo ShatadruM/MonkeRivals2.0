@@ -4,7 +4,7 @@ const UserSchema = new mongoose.Schema({
   firebaseUid: {
     type: String,
     required: true,
-    unique: true, // The critical link to Firebase
+    unique: true, 
     index: true
   },
   username: {
@@ -17,7 +17,7 @@ const UserSchema = new mongoose.Schema({
   },
   avatar: String,
   stats: {
-    mmr: { type: Number, default: 1000 }, // Matchmaking Rating
+    mmr: { type: Number, default: 1000 }, // Starting MMR
     matchesPlayed: { type: Number, default: 0 },
     wins: { type: Number, default: 0 },
     avgWpm: { type: Number, default: 0 },
