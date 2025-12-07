@@ -63,6 +63,14 @@ const handleGameEvents = (io, socket) => {
 
         const winner = results[0];
 
+         // Broadcast Results
+        io.to(roomId).emit('game_over', {
+          results: results, 
+          winnerId: winner.socketId
+        });
+
+        roomResults.delete(roomId);
+
         // --- SAVE TO DATABASE ---
         try {
             const hasLoggedInUser = results.some(r => r.mongoUserId);
@@ -119,13 +127,7 @@ const handleGameEvents = (io, socket) => {
             console.error("[DEBUG] Error saving match data:", err);
         }
 
-        // Broadcast Results
-        io.to(roomId).emit('game_over', {
-          results: results, 
-          winnerId: winner.socketId
-        });
-
-        roomResults.delete(roomId);
+       
 
       } else {
         console.log(`[DEBUG] Waiting for opponent in room ${roomId}`);
