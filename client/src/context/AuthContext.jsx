@@ -36,7 +36,7 @@ export const AuthProvider = ({ children }) => {
       const token = await firebaseUser.getIdToken();
       
       // 2. Send to our Backend
-      const response = await fetch('http://localhost:3000/api/auth/sync', {
+      const response = await fetch(import.meta.env.VITE_BACKEND_URL + '/api/auth/sync', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

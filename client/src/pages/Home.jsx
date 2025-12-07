@@ -25,7 +25,7 @@ const Home = () => {
   const fetchContent = useCallback(async () => {
     setGameState('loading');
     try {
-      const res = await fetch('http://localhost:3000/api/content/random');
+      const res = await fetch(import.meta.env.VITE_BACKEND_URL + '/api/content/random');
       const data = await res.json();
       setGameText(data.content);
       setSource(data.source);
@@ -97,19 +97,16 @@ const Home = () => {
         </div>
       )}
 
-      {/* Page Header */}
-      {gameState === 'idle' && (
-        <div className="mt-12 mb-16 text-center animate-in fade-in duration-500">
-          <h2 className="text-monke-text font-mono text-lg mb-2">Solo Practice</h2>
-          {/* Show the Source */}
-          <p className="text-monke-main/60 font-mono text-sm">Source: {source || "Unknown"}</p>
-        </div>
-      )}
+     
 
       {/* GAME: Typing Board */}
       {(gameState === 'idle' || gameState === 'playing') && (
         <div className="w-full">
-          
+          <div className="mt-12 mb-16 text-center animate-in fade-in duration-500">
+          <h2 className="text-monke-text font-mono text-lg mb-2">Solo Practice</h2>
+          {/* Show the Source */}
+          <p className="text-monke-main/60 font-mono text-sm">Source: {source || "Unknown"}</p>
+        </div>
             <TypingBoard 
                 key={boardKey} 
                 text={gameText} // Use dynamic variable instead of constant

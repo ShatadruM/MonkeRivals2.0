@@ -15,7 +15,7 @@ const Profile = () => {
       if (!currentUser) return;
       try {
         const token = await currentUser.getIdToken();
-        const res = await fetch('http://localhost:3000/api/user/profile', {
+        const res = await fetch(import.meta.env.VITE_BACKEND_URL + '/api/user/profile', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         

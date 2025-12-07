@@ -10,8 +10,8 @@ export const SocketProvider = ({ children }) => {
 
   useEffect(() => {
     // 1. Connect to the backend (we will build this next)
-    // Replace URL with your actual backend URL later (e.g., localhost:3000)
-    const newSocket = io('http://localhost:3000', {
+    
+    const newSocket = io(import.meta.env.VITE_BACKEND_URL, {
       autoConnect: false // Don't connect until the user logs in or clicks play
     });
 
