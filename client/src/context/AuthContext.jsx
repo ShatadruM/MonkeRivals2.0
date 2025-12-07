@@ -32,10 +32,10 @@ export const AuthProvider = ({ children }) => {
     if (!firebaseUser) return;
 
     try {
-      // 1. Get the JWT token from Firebase
+      // Getting the JWT token from Firebase
       const token = await firebaseUser.getIdToken();
       
-      // 2. Send to our Backend
+      //  Sending to Backend
       const response = await fetch(import.meta.env.VITE_BACKEND_URL + '/api/auth/sync', {
         method: 'POST',
         headers: {

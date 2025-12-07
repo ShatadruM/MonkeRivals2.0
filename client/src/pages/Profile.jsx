@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { User, Trophy, Activity, Zap, History } from 'lucide-react';
 import MatchCard from '../components/Profile/MatchCard'; 
 import StatCard from '../components/Profile/StatCard'; 
-import LoadingScreen from '../components/UI/LoadingScreen'; // Import
+import LoadingScreen from '../components/UI/LoadingScreen'; 
 
 const Profile = () => {
   const { currentUser } = useAuth();
@@ -34,7 +34,7 @@ const Profile = () => {
     fetchProfile();
   }, [currentUser]);
 
-  // --- USE UNIVERSAL LOADER ---
+  
   if (loading) {
     return <LoadingScreen message="Loading Profile..." />;
   }
@@ -51,8 +51,7 @@ const Profile = () => {
 
   return (
     <div className="w-full max-w-5xl mx-auto px-4 py-12 animate-in fade-in zoom-in duration-500 font-mono">
-      {/* ... (Keep existing JSX for Header, Stats, History) ... */}
-      {/* 1. Header Profile Section */}
+     
       <div className="flex flex-col md:flex-row items-center gap-8 mb-12 bg-black/20 p-8 rounded-2xl border border-white/5 shadow-xl">
         <div className="relative">
           <img 
@@ -73,7 +72,7 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* 2. Stats Grid */}
+      {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-16">
         <StatCard icon={Trophy} label="MMR Rating" value={user.stats.mmr} color="text-yellow-400" />
         <StatCard icon={Zap} label="Best WPM" value={user.stats.bestWpm} color="text-monke-main" />
@@ -81,7 +80,7 @@ const Profile = () => {
         <StatCard icon={History} label="Matches" value={user.stats.matchesPlayed} color="text-purple-400" />
       </div>
 
-      {/* 3. Match History List */}
+      {/* Match History List */}
       <div className="space-y-6">
         <h2 className="text-2xl text-monke-light font-bold mb-4 flex items-center gap-2">
           <History size={24} />

@@ -4,7 +4,6 @@ const TypingContentSchema = new mongoose.Schema({
   text: {
     type: String,
     required: true,
-    // It's good to ensure quotes aren't too short for a ranked game
     minlength: 10 
   },
   difficulty: {

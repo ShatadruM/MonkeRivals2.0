@@ -21,7 +21,7 @@ const Home = () => {
     statsRef.current = stats;
   }, [stats]);
 
-  // --- CHANGE 2: Fetch Function ---
+  // fetching the quote
   const fetchContent = useCallback(async () => {
     setGameState('loading');
     try {
@@ -37,7 +37,7 @@ const Home = () => {
     }
   }, []);
 
-  // --- CHANGE 3: Fetch on Mount ---
+  // fetching only on mount
   useEffect(() => {
     fetchContent();
   }, [fetchContent]);
@@ -72,7 +72,7 @@ const Home = () => {
     }
   }, [startGraph, stopGraph]);
 
-  // --- CHANGE 4: Fetch New Quote on Restart ---
+  // -Fetch New Quote on Restart 
   const handleRestart = async () => {
     stopGraph();
     setStats({ wpm: 0, progress: 0, accuracy: 100 });
@@ -104,7 +104,6 @@ const Home = () => {
         <div className="w-full">
           <div className="mt-12 mb-16 text-center animate-in fade-in duration-500">
           <h2 className="text-monke-text font-mono text-lg mb-2">Solo Practice</h2>
-          {/* Show the Source */}
           <p className="text-monke-main/60 font-mono text-sm">Source: {source || "Unknown"}</p>
         </div>
             <TypingBoard 

@@ -6,10 +6,8 @@ const roomResults = new Map();
 
 const handleGameEvents = (io, socket) => {
     
-    // 1. Progress Update
+    //  Progress Update
     socket.on('update_progress', (data) => {
-      // (Optional) Uncomment to debug progress stream
-      // console.log(`[DEBUG] Progress: ${socket.id} - ${data.percentage}%`);
       socket.to(data.roomId).emit('opponent_progress', {
         userId: socket.id,
         percentage: data.percentage,
@@ -17,7 +15,7 @@ const handleGameEvents = (io, socket) => {
       });
     });
   
-    // 2. Game Finished
+    // Game Finished
     socket.on('game_finished', async (data) => {
       console.log(`[DEBUG] RECEIVED game_finished from ${socket.id}`);
       console.log(`[DEBUG] Payload:`, data);
@@ -78,7 +76,7 @@ const handleGameEvents = (io, socket) => {
 
             if (hasLoggedInUser) {
                 
-                // 1. Create Match Record
+                // Create Match Record
                 const matchRecord = new Match({
                     roomId,
                     participants: results.map(r => ({
@@ -95,7 +93,7 @@ const handleGameEvents = (io, socket) => {
                 await matchRecord.save();
                 console.log(`[DEBUG] Match saved! ID: ${matchRecord._id}`);
 
-                // 2. Update User Stats & MMR
+                // Update User Stats & MMR
                 for (const r of results) {
                     if (r.mongoUserId) {
                         const user = await User.findById(r.mongoUserId);

@@ -21,12 +21,12 @@ const Arena = () => {
   const [finalResult, setFinalResult] = useState(null);
   
   // Refs
-  // We initialize accuracy to 100 so it doesn't show 0 if game ends instantly
+  // initializing accuracy to 100 so it doesn't show 0 if game ends instantly
   const statsRef = useRef({ myWpm: 0, oppWpm: 0, accuracy: 100 });
   const timerRef = useRef(null);
   const hasFinishedRef = useRef(false); 
 
-  // Sync refs with state (Keep this for the graph/timer tracking)
+  // Sync refs with state for the graph/timer tracking
   useEffect(() => {
     statsRef.current = { 
         myWpm: myStats.wpm, 
@@ -93,7 +93,7 @@ const Arena = () => {
     };
   }, [socket]); 
 
-  // --- Graph Tracking ---
+  // Graph Tracking
   const startDataTracking = () => {
     if (timerRef.current) clearInterval(timerRef.current);
     let seconds = 0;
@@ -127,11 +127,11 @@ const Arena = () => {
         if (progressPercentage === 100) {
             hasFinishedRef.current = true;
             
-            // --- DEBUG LOG ---
+           
             console.log("SENDING FINISH:", {
                 wpm: currentWpm,
                 acc: currentAccuracy,
-                userId: mongoUser?._id // Check your Browser Console for this value!
+                userId: mongoUser?._id 
             });
 
             socket?.emit('game_finished', { 
