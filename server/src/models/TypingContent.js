@@ -1,10 +1,11 @@
-import { Schema, model } from 'mongoose';
+import mongoose from 'mongoose';
 
-const TypingContentSchema = new Schema({
+const TypingContentSchema = new mongoose.Schema({
   text: {
     type: String,
     required: true,
-    minlength: 50
+    // It's good to ensure quotes aren't too short for a ranked game
+    minlength: 10 
   },
   difficulty: {
     type: String,
@@ -12,9 +13,19 @@ const TypingContentSchema = new Schema({
     default: 'medium'
   },
   source: {
-    type: String,
+    type: String, // e.g., "The Matrix", "Steve Jobs", or "Unknown"
     default: 'Unknown'
+  },
+  length: { // Useful for filtering later
+    type: Number 
   }
 }, { timestamps: true });
 
-export default model('TypingContent', TypingContentSchema);
+// Pre-save hook to calculate length automatically
+TypingContentSchema.pre('save', function(next) {
+  this.length = this.text.length;
+  next();
+});
+
+const TypingContent = mongoose.model('TypingContent', TypingContentSchema);
+export default TypingContent;
