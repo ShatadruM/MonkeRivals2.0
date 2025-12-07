@@ -1,40 +1,56 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import TypingBoard from '../components/Game/TypingBoard';
 import ResultsView from '../components/Game/ResultsView';
-import { RefreshCcw } from 'lucide-react';
-
-const SOLO_TEXT = "Migrating the backend to AWS right now";
+import { RefreshCcw, Loader2 } from 'lucide-react'; // Added Loader2
 
 const Home = () => {
-  const [gameState, setGameState] = useState('idle'); 
-  // Initialize stats with accuracy
+  const [gameState, setGameState] = useState('loading'); // Start in 'loading'
+  
+  // --- CHANGE 1: Dynamic Text State ---
+  const [gameText, setGameText] = useState("");
+  const [source, setSource] = useState("");
+  
   const [stats, setStats] = useState({ wpm: 0, progress: 0, accuracy: 100 });
   const [historyData, setHistoryData] = useState([]);
   
   const statsRef = useRef(stats);
   const timerRef = useRef(null);
-  
   const [boardKey, setBoardKey] = useState(0); 
 
   useEffect(() => {
     statsRef.current = stats;
   }, [stats]);
 
+  // --- CHANGE 2: Fetch Function ---
+  const fetchContent = useCallback(async () => {
+    setGameState('loading');
+    try {
+      const res = await fetch('http://localhost:3000/api/content/random');
+      const data = await res.json();
+      setGameText(data.content);
+      setSource(data.source);
+      setGameState('idle');
+    } catch (err) {
+      console.error("Failed to fetch content:", err);
+      setGameText("The quick brown fox jumps over the lazy dog."); // Fallback
+      setGameState('idle');
+    }
+  }, []);
+
+  // --- CHANGE 3: Fetch on Mount ---
+  useEffect(() => {
+    fetchContent();
+  }, [fetchContent]);
+
   const startGraph = useCallback(() => {
     if (timerRef.current) return;
-    
     setGameState('playing');
     let seconds = 0;
-    
     timerRef.current = setInterval(() => {
       seconds++;
       setHistoryData(prev => [
         ...prev,
-        { 
-          time: seconds, 
-          myWpm: statsRef.current.wpm, 
-          oppWpm: null 
-        }
+        { time: seconds, myWpm: statsRef.current.wpm, oppWpm: null }
       ]);
     }, 1000);
   }, []);
@@ -46,25 +62,23 @@ const Home = () => {
     }
   }, []);
 
-  // Updated to accept accuracy
   const handleStatsUpdate = useCallback((wpm, progress, accuracy) => {
     setStats({ wpm, progress, accuracy });
 
-    if (progress > 0 && !timerRef.current) {
-       startGraph();
-    }
-
+    if (progress > 0 && !timerRef.current) startGraph();
     if (progress === 100) {
       stopGraph();
       setGameState('finished');
     }
   }, [startGraph, stopGraph]);
 
-  const handleRestart = () => {
+  // --- CHANGE 4: Fetch New Quote on Restart ---
+  const handleRestart = async () => {
     stopGraph();
-    setGameState('idle');
     setStats({ wpm: 0, progress: 0, accuracy: 100 });
     setHistoryData([]);
+    // Wait for new text before resetting board
+    await fetchContent(); 
     setBoardKey(prev => prev + 1);
   };
 
@@ -75,18 +89,30 @@ const Home = () => {
   return (
     <div className="flex flex-col items-center min-h-[80vh] w-full max-w-7xl mx-auto px-4">
       
-      {gameState !== 'finished' && (
-        <div className="mt-12 mb-16 text-center animate-in fade-in duration-500">
-          <h2 className="text-monke-text font-mono text-lg mb-2">Solo Practice</h2>
-          <p className="text-monke-main/60 font-mono text-sm">Type freely. No pressure.</p>
+      {/* Loading State */}
+      {gameState === 'loading' && (
+        <div className="flex flex-col items-center mt-32 animate-pulse">
+          <Loader2 className="animate-spin text-monke-main mb-4" size={48} />
+          <p className="text-monke-text font-mono">Fetching quote...</p>
         </div>
       )}
 
-      {gameState !== 'finished' && (
+      {/* Page Header */}
+      {gameState === 'idle' && (
+        <div className="mt-12 mb-16 text-center animate-in fade-in duration-500">
+          <h2 className="text-monke-text font-mono text-lg mb-2">Solo Practice</h2>
+          {/* Show the Source */}
+          <p className="text-monke-main/60 font-mono text-sm">Source: {source || "Unknown"}</p>
+        </div>
+      )}
+
+      {/* GAME: Typing Board */}
+      {(gameState === 'idle' || gameState === 'playing') && (
         <div className="w-full">
+          
             <TypingBoard 
                 key={boardKey} 
-                text={SOLO_TEXT} 
+                text={gameText} // Use dynamic variable instead of constant
                 onStatsUpdate={handleStatsUpdate}
             />
             
@@ -96,19 +122,20 @@ const Home = () => {
                     className="text-monke-text hover:text-monke-main transition p-2 flex items-center gap-2 font-mono text-sm"
                     title="Restart Test"
                 >
-                    <RefreshCcw size={16} /> Restart
+                    <RefreshCcw size={16} /> New Quote
                 </button>
             </div>
         </div>
       )}
 
+      {/* RESULTS */}
       {gameState === 'finished' && (
         <div className="mt-20 w-full">
             <ResultsView 
                 result={{
                     isWinner: true, 
                     wpm: stats.wpm,
-                    accuracy: stats.accuracy // NOW USING REAL ACCURACY
+                    accuracy: stats.accuracy
                 }}
                 historyData={historyData}
                 onPlayAgain={handleRestart}
