@@ -3,7 +3,7 @@ import { redisClient } from '../config/redis.js';
 
 // The Redis key for the queue
 const MATCH_QUEUE_KEY = 'matchmaking_queue';
-const FALLBACK_TEXT = "The quick brown fox jumps ";
+const FALLBACK_TEXT = "The quick brown";
 
 // In-memory map to quickly retrieve connected socket objects by ID
 // Redis stores ID strings, but we need the actual socket object to emit events.

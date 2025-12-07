@@ -13,20 +13,25 @@ const Arena = () => {
   const [roomId, setRoomId] = useState(null);
 
   // Stats
-  const [myStats, setMyStats] = useState({ wpm: 0, progress: 0 });
+  const [myStats, setMyStats] = useState({ wpm: 0, progress: 0, accuracy: 100 });
   const [oppStats, setOppStats] = useState({ wpm: 0, progress: 0 });
   const [historyData, setHistoryData] = useState([]);
   const [finalResult, setFinalResult] = useState(null);
   
-  // Refs for tracking state without re-renders
-  const statsRef = useRef({ myWpm: 0, oppWpm: 0 });
+  // Refs
+  // We initialize accuracy to 100 so it doesn't show 0 if game ends instantly
+  const statsRef = useRef({ myWpm: 0, oppWpm: 0, accuracy: 100 });
   const timerRef = useRef(null);
-  const hasFinishedRef = useRef(false); // Prevents double submission
+  const hasFinishedRef = useRef(false); 
 
-  // Sync refs with state
+  // Sync refs with state (Keep this for the graph/timer tracking)
   useEffect(() => {
-    statsRef.current = { myWpm: myStats.wpm, oppWpm: oppStats.wpm };
-  }, [myStats.wpm, oppStats.wpm]);
+    statsRef.current = { 
+        myWpm: myStats.wpm, 
+        oppWpm: oppStats.wpm, 
+        accuracy: myStats.accuracy 
+    };
+  }, [myStats.wpm, oppStats.wpm, myStats.accuracy]);
 
   useEffect(() => {
     if (!socket) return;
@@ -37,9 +42,11 @@ const Arena = () => {
       setOpponentInfo(data.opponent);
       setRoomId(data.roomId);
       setHistoryData([]);
-      setMyStats({ wpm: 0, progress: 0 });
+      // Reset stats
+      setMyStats({ wpm: 0, progress: 0, accuracy: 100 });
       setOppStats({ wpm: 0, progress: 0 });
-      hasFinishedRef.current = false; // Reset finish flag
+      statsRef.current = { myWpm: 0, oppWpm: 0, accuracy: 100 }; // Reset ref manually too
+      hasFinishedRef.current = false; 
       
       setTimeout(() => {
         setMatchState('playing');
@@ -62,10 +69,16 @@ const Arena = () => {
       const amIWinner = data.winnerId === socket.id;
       const myServerResult = data.results.find(r => r.userId === socket.id);
       
+      // FALLBACK LOGIC:
+      // 1. Try Server Result (if server calculates it)
+      // 2. Try Ref (Immediate value from handleTick)
+      // 3. Default to 100
+      const finalAcc = myServerResult?.accuracy || statsRef.current.accuracy || 100;
+
       setFinalResult({
         isWinner: amIWinner,
-        wpm: myServerResult ? myServerResult.wpm : myStats.wpm,
-        accuracy: 100 
+        wpm: myServerResult ? myServerResult.wpm : statsRef.current.myWpm,
+        accuracy: finalAcc
       });
     });
 
@@ -103,17 +116,25 @@ const Arena = () => {
     }
   };
 
-  // Memoized callback to prevent event spamming
-  const handleTick = useCallback((currentWpm, progressPercentage) => {
-    // Check ref to ensure we don't submit twice
+  const handleTick = useCallback((currentWpm, progressPercentage, currentAccuracy) => {
     if (matchState === 'playing' && !hasFinishedRef.current) {
-        setMyStats({ wpm: currentWpm, progress: progressPercentage });
+        
+        // --- CRITICAL FIX: Update Ref IMMEDIATELY here ---
+        // We do this before setting state or emitting events so the Ref is 
+        // guaranteed to be fresh when 'game_over' fires, bypassing React render lag.
+        statsRef.current = { 
+            myWpm: currentWpm, 
+            oppWpm: statsRef.current.oppWpm, 
+            accuracy: currentAccuracy 
+        };
+
+        setMyStats({ wpm: currentWpm, progress: progressPercentage, accuracy: currentAccuracy});
         
         socket?.emit('update_progress', { roomId, percentage: progressPercentage, wpm: currentWpm });
 
         if (progressPercentage === 100) {
-            hasFinishedRef.current = true; // Mark as sent immediately
-            socket?.emit('game_finished', { roomId, wpm: currentWpm });
+            hasFinishedRef.current = true; 
+            socket?.emit('game_finished', { roomId, wpm: currentWpm, accuracy: currentAccuracy });
         }
     }
   }, [matchState, roomId, socket]);
@@ -171,7 +192,6 @@ const Arena = () => {
              <span className="text-monke-text text-sm">Your Final WPM:</span>
              <div className="text-4xl text-monke-main font-bold">{myStats.wpm}</div>
           </div>
-          {/* Visual confirmation that we are still tracking opponent */}
           <div className="mt-4 text-xs text-monke-text/50">
              Opponent is at {oppStats.progress}%...
           </div>
