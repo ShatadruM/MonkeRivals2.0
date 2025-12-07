@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { User, Trophy, Activity, History } from 'lucide-react';
+import { User, Trophy, Activity, Zap, History } from 'lucide-react';
+import MatchCard from '../components/Profile/MatchCard'; 
+import StatCard from '../components/Profile/StatCard'; 
+import LoadingScreen from '../components/UI/LoadingScreen'; // Import
 
 const Profile = () => {
   const { currentUser } = useAuth();
@@ -15,8 +18,13 @@ const Profile = () => {
         const res = await fetch('http://localhost:3000/api/user/profile', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
-        const data = await res.json();
-        setProfileData(data);
+        
+        if (res.ok) {
+          const data = await res.json();
+          setProfileData(data);
+        } else {
+          console.error("Failed to fetch profile");
+        }
       } catch (err) {
         console.error(err);
       } finally {
@@ -26,76 +34,78 @@ const Profile = () => {
     fetchProfile();
   }, [currentUser]);
 
-  if (loading) return <div className="text-monke-main text-center mt-20">Loading Profile...</div>;
-  if (!profileData) return <div className="text-monke-error text-center mt-20">Failed to load profile</div>;
+  // --- USE UNIVERSAL LOADER ---
+  if (loading) {
+    return <LoadingScreen message="Loading Profile..." />;
+  }
+
+  if (!profileData) {
+    return (
+      <div className="flex justify-center items-center h-[80vh]">
+        <div className="text-monke-error font-mono">Could not load profile data.</div>
+      </div>
+    );
+  }
 
   const { user, matches } = profileData;
 
   return (
-    <div className="w-full max-w-5xl mx-auto px-4 py-12 animate-in fade-in zoom-in duration-500">
-      
-      {/* Header */}
-      <div className="flex items-center gap-6 mb-12 bg-black/20 p-8 rounded-2xl border border-white/5">
-        <img src={user.avatar || "https://via.placeholder.com/150"} alt="Avatar" className="w-24 h-24 rounded-full border-4 border-monke-main" />
-        <div>
-          <h1 className="text-4xl font-mono font-bold text-monke-light">{user.username}</h1>
-          <p className="text-monke-text mt-2">Joined: {new Date(user.createdAt).toLocaleDateString()}</p>
+    <div className="w-full max-w-5xl mx-auto px-4 py-12 animate-in fade-in zoom-in duration-500 font-mono">
+      {/* ... (Keep existing JSX for Header, Stats, History) ... */}
+      {/* 1. Header Profile Section */}
+      <div className="flex flex-col md:flex-row items-center gap-8 mb-12 bg-black/20 p-8 rounded-2xl border border-white/5 shadow-xl">
+        <div className="relative">
+          <img 
+            src={user.avatar || "https://via.placeholder.com/150"} 
+            alt="Avatar" 
+            className="w-32 h-32 rounded-full border-4 border-monke-main shadow-lg shadow-monke-main/20" 
+          />
+          <div className="absolute -bottom-2 -right-2 bg-monke-bg p-2 rounded-full border border-white/10">
+            <User size={20} className="text-monke-light" />
+          </div>
+        </div>
+        
+        <div className="text-center md:text-left">
+          <h1 className="text-4xl font-bold text-monke-light tracking-tight">{user.username}</h1>
+          <p className="text-monke-text mt-2 text-sm flex items-center justify-center md:justify-start gap-2">
+            <span>Joined {new Date(user.createdAt).toLocaleDateString()}</span>
+          </p>
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
-        <StatCard icon={Trophy} label="MMR" value={user.stats.mmr} color="text-yellow-400" />
+      {/* 2. Stats Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-16">
+        <StatCard icon={Trophy} label="MMR Rating" value={user.stats.mmr} color="text-yellow-400" />
+        <StatCard icon={Zap} label="Best WPM" value={user.stats.bestWpm} color="text-monke-main" />
         <StatCard icon={Activity} label="Avg WPM" value={user.stats.avgWpm} color="text-blue-400" />
-        <StatCard icon={Activity} label="Best WPM" value={user.stats.bestWpm} color="text-green-400" />
         <StatCard icon={History} label="Matches" value={user.stats.matchesPlayed} color="text-purple-400" />
       </div>
 
-      {/* Match History */}
-      <h2 className="text-2xl text-monke-light font-bold mb-6 font-mono">Match History</h2>
-      <div className="bg-black/20 rounded-xl border border-white/5 overflow-hidden">
-        <table className="w-full text-left">
-          <thead className="bg-white/5 text-monke-text">
-            <tr>
-              <th className="p-4 font-mono text-sm">Date</th>
-              <th className="p-4 font-mono text-sm">Opponent</th>
-              <th className="p-4 font-mono text-sm">Result</th>
-              <th className="p-4 font-mono text-sm">WPM</th>
-              <th className="p-4 font-mono text-sm">Acc</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/5">
-            {matches.map((match) => {
-              const myStats = match.participants.find(p => p.user._id === user._id) || match.participants.find(p => p.socketId); // Fallback logic
-              const opponent = match.participants.find(p => p.user._id !== user._id);
-              const isWin = match.winner?._id === user._id;
-
-              return (
-                <tr key={match._id} className="hover:bg-white/5 transition">
-                  <td className="p-4 text-monke-text text-sm">{new Date(match.playedAt).toLocaleDateString()}</td>
-                  <td className="p-4 text-monke-light">{opponent?.user?.username || "Guest"}</td>
-                  <td className={`p-4 font-bold ${isWin ? 'text-monke-main' : 'text-monke-error'}`}>
-                    {isWin ? 'WIN' : 'LOSS'}
-                  </td>
-                  <td className="p-4 text-monke-light font-mono">{myStats?.wpm || 0}</td>
-                  <td className="p-4 text-monke-text font-mono">{myStats?.accuracy || 0}%</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-        {matches.length === 0 && <div className="p-8 text-center text-monke-text">No matches played yet.</div>}
+      {/* 3. Match History List */}
+      <div className="space-y-6">
+        <h2 className="text-2xl text-monke-light font-bold mb-4 flex items-center gap-2">
+          <History size={24} />
+          Match History
+        </h2>
+        
+        <div className="flex flex-col gap-2">
+          {matches.length > 0 ? (
+            matches.map((match) => (
+              <MatchCard 
+                key={match._id} 
+                match={match} 
+                currentUserId={user._id} 
+              />
+            ))
+          ) : (
+            <div className="p-12 text-center bg-black/20 rounded-xl border border-white/5 border-dashed">
+              <p className="text-monke-text">No matches played yet. Go to the Arena!</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 };
-
-const StatCard = ({ icon: Icon, label, value, color }) => (
-  <div className="bg-black/20 p-6 rounded-xl border border-white/5 flex flex-col items-center justify-center">
-    <Icon className={`mb-2 ${color}`} size={24} />
-    <span className="text-3xl font-bold text-monke-light font-mono">{value}</span>
-    <span className="text-xs text-monke-text uppercase tracking-wider mt-1">{label}</span>
-  </div>
-);
 
 export default Profile;

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth, googleProvider } from '../firebase';
 import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
+import LoadingScreen from '../components/UI/LoadingScreen';
 
 const AuthContext = createContext();
 
@@ -81,9 +82,13 @@ export const AuthProvider = ({ children }) => {
     logout
   };
 
+ if (loading) {
+    return <LoadingScreen message="Initializing..." fullscreen={true} />;
+  }
+
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 };
