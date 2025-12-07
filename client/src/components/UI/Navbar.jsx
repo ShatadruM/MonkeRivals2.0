@@ -53,7 +53,7 @@ const Navbar = () => {
         {currentUser ? (
           <div className="flex items-center gap-4">
             {/* User Profile */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2" onClick={() => handleNavigation('/profile')}>
               <img 
                 src={currentUser.photoURL} 
                 alt="User" 
