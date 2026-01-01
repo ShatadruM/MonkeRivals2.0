@@ -7,7 +7,7 @@ const useTypingGame = (text) => {
   const [startTime, setStartTime] = useState(null);
   const [wpm, setWpm] = useState(0);
   
-  // --- NEW: Accuracy Stats ---
+ 
   const [accuracy, setAccuracy] = useState(100);
   const [totalTyped, setTotalTyped] = useState(0);
   const [errors, setErrors] = useState(0);
