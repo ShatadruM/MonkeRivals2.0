@@ -7,7 +7,6 @@ const useTypingGame = (text) => {
   const [startTime, setStartTime] = useState(null);
   const [wpm, setWpm] = useState(0);
   
- 
   const [accuracy, setAccuracy] = useState(100);
   const [totalTyped, setTotalTyped] = useState(0);
   const [errors, setErrors] = useState(0);
@@ -20,7 +19,6 @@ const useTypingGame = (text) => {
     setPhase('start');
     setWpm(0);
     setStartTime(null);
-    // Reset stats
     setTotalTyped(0);
     setErrors(0);
     setAccuracy(100);
@@ -46,10 +44,8 @@ const useTypingGame = (text) => {
       return;
     }
 
-    // Ignore non-char keys
     if (key.length !== 1) return;
 
-    // Increment total keystrokes for accuracy calc
     setTotalTyped((prev) => prev + 1);
 
     const currentCharObj = charsState[currIndex];
@@ -58,18 +54,15 @@ const useTypingGame = (text) => {
     if (key === currentCharObj.char) {
       isCorrect = true;
     } else {
-      // Track error
       setErrors((prev) => prev + 1);
     }
 
-    // Update Character UI
     setCharsState((prev) => {
       const newChars = [...prev];
       newChars[currIndex].status = isCorrect ? 'correct' : 'incorrect';
       return newChars;
     });
 
-    // --- CHANGED: Always move forward, even on error ---
     const nextIndex = currIndex + 1;
     setCurrIndex(nextIndex);
     
@@ -79,22 +72,31 @@ const useTypingGame = (text) => {
 
   }, [currIndex, phase, text, charsState]);
 
-  // Calculate WPM & Accuracy live
+  // --- MODIFIED EFFECT ---
   useEffect(() => {
     if (phase === 'typing' && startTime) {
-      const durationInMinutes = (Date.now() - startTime) / 60000;
+      const currentTime = Date.now();
+      const timeElapsed = currentTime - startTime; // in ms
+
+      // 1. Update Accuracy (Time Independent)
+      // We calculate this immediately so the user sees feedback instantly
+      if (totalTyped > 0) {
+        const rawAcc = ((totalTyped - errors) / totalTyped) * 100;
+        setAccuracy(Math.max(0, Math.round(rawAcc)));
+      }
+
+      // 2. Update WPM (Time Dependent)
+      // FIX: If less than 1 second has passed, don't calculate WPM.
+      // This prevents dividing by tiny numbers (0.001s) which causes the 1000+ WPM spike.
+      if (timeElapsed < 1000) {
+        return; 
+      }
+
+      const durationInMinutes = timeElapsed / 60000;
       const correctChars = charsState.filter(c => c.status === 'correct').length;
       
-      // WPM
       const calculatedWpm = Math.round((correctChars / 5) / durationInMinutes);
       setWpm(calculatedWpm < 0 || !isFinite(calculatedWpm) ? 0 : calculatedWpm);
-
-      // Accuracy: (Total - Errors) / Total
-      // We use totalTyped which grows with every key press
-      if (totalTyped > 0) {
-          const rawAcc = ((totalTyped - errors) / totalTyped) * 100;
-          setAccuracy(Math.max(0, Math.round(rawAcc)));
-      }
     }
   }, [charsState, phase, startTime, totalTyped, errors]);
 
